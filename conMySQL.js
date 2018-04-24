@@ -32,21 +32,6 @@ function login (tel, pwd) {
 	return promise
 }
 
-function insert (tel, pwd) {
-	console.log('进入插入')
-	var promise = new Promise(function(resolve, reject){
-		var sql = `insert into user (user_tel, user_pwd) values (${tel}, ${pwd})`;
-
-		connection.query(sql, function(error, results, fields) {
-			if (error) {
-				throw error
-			}
-			resolve({status: 200})
-		})
-	})
-	return promise
-}
-
 function regist (tel, pwd) {
 
 	var promise = new Promise(function(resolve, reject){
@@ -71,7 +56,22 @@ function regist (tel, pwd) {
 	return promise
 }
 
-function select (tel) {
+function insertUser (tel, pwd) {
+	console.log('进入插入')
+	var promise = new Promise(function(resolve, reject){
+		var sql = `insert into user (user_tel, user_pwd) values (${tel}, ${pwd})`;
+
+		connection.query(sql, function(error, results, fields) {
+			if (error) {
+				throw error
+			}
+			resolve({status: 200})
+		})
+	})
+	return promise
+}
+
+function selectUser (tel) {
 	console.log('进入select')
 	return new Promise(function(resolve, reject){
 		var sql = `select user_img,user_name from user where user_tel=${tel};`;
@@ -84,4 +84,74 @@ function select (tel) {
 	})
 }
 
-module.exports = {login, regist, insert, select}
+function selectSongInfo (song_id) {
+	return new Promise(function(resolve, reject){
+		var sql = `select * from songInfo  where song_id=${song_id};`;
+		connection.query(sql, function(err, results, fields){
+			if (err) throw err;
+			if (results && results.length > 0) {
+				resolve({status: 1})
+			} else {
+				resolve({status: 0})
+			}
+		})
+	})
+}
+
+// 判断这条数据在likeSongs表中是否已存在
+function haveLike (user_tel, song_id) {
+	return new Promise(function(resolve, reject){
+		var sql = `select * from likeSongs  where song_id=${song_id} and user_tel=${user_tel};`;
+		connection.query(sql, function(err, results, fields){
+			if (err) throw err;
+			if (results && results.length > 0) {
+				resolve({status: 1})
+			} else {
+				resolve({status: 0})
+			}
+		})
+	})
+}
+
+function insertLike (user_tel, song_id, flag) {
+	return new Promise(function(resolve, reject){
+		var sql = ''
+		if (parseInt(flag)) {
+			haveLike(user_tel, song_id).then(function(obj){
+				if (obj.status === 0) {
+					sql = `insert into likeSongs (user_tel, song_id) values (${user_tel}, ${song_id});`
+					connection.query(sql, function(err, results, fields){
+						if(err) throw err;
+						if (results) {
+							resolve({status: 200})
+						}
+					})
+				}
+			})
+		} else {
+			sql = `delete from likeSongs where user_tel=${user_tel} and song_id=${song_id};`
+			connection.query(sql, function(err, results, fields){
+				if(err) throw err;
+				if (results) {
+					resolve({status: 200})
+				}
+			})
+		}
+	})
+}
+
+function insertSongInfo (song_id, song_mid, song_img, song_name, singer) {
+	return new Promise(function(resolve, reject){
+		var sql = 'insert into songInfo (song_id, song_mid, song_img, song_name, singer) values ("'+ song_id + '","' + song_mid+ '","' + song_img+ '","' + song_name+ '","' + singer+ '");'
+		console.log('sql语句为：')
+		console.log(sql)
+		connection.query(sql, function(err, results, fields){
+			if (err) throw err;
+			if (results) {
+				resolve({status: 200})
+			}
+		})
+	})
+}
+
+module.exports = {login, regist, insertUser, selectUser, insertLike, selectSongInfo, insertSongInfo, haveLike}

@@ -2,7 +2,7 @@ const http = require("http");
 const url = require("url");
 // const querystring = require("querystring");
 const step = require("step");
-const {login, regist, insert, select} = require('./conMySQL');
+const {login, regist, insertUser, selectUser, insertLike, selectSongInfo, insertSongInfo} = require('./conMySQL');
 
 function getPathName (u) {
 	return url.parse(u).pathname
@@ -54,7 +54,7 @@ http.createServer(function (req, res) {
 						res.write(JSON.stringify(body))
 						res.end()
 					} else {
-						select(j.tel).then(function(obj){
+						selectUser(j.tel).then(function(obj){
 							body = {
 								code: 0,
 								message: '登录成功',
@@ -82,14 +82,13 @@ http.createServer(function (req, res) {
 			data += chunk
 		})
 		req.on('end', function() { // 监听请求结束
-			console.log(data)
 			if (data) {
 				var j = JSON.parse(data);
 
 				regist(j.tel, j.pwd).then(function(obj){
 					if (obj.status === 200) {
 						console.log('进行插入操作')
-						insert(j.tel, j.pwd).then(function(obj){
+						insertUser(j.tel, j.pwd).then(function(obj){
 							if (obj.status === 200) {
 								var body = {
 									code: 0,
@@ -114,7 +113,90 @@ http.createServer(function (req, res) {
 				res.end('regist')
 			}
 		})
-	} else {
+	} else if (getPathName(req.url) === '/like') {
+		console.log('进入like')
+		res.writeHead(200, {
+			'Content-Type': 'text/plain;charset=utf8',
+			'Access-Control-Allow-Origin': '*',
+			'Access-Control-Allow-Headers': 'Content-Type, Content-Length, Authorization, Accept',
+			'Access-Control-Allow-Methods': 'GET'
+		});
+		var data = getQuery(req.url)
+		insertLike(data.tel, data.song_id, data.flag).then(obj => {
+			var body = {}
+			if (obj.status === 200) {
+				if (parseInt(data.flag)) {
+					selectSongInfo(data.song_id).then(obj => {
+						if (obj.status == 0) {
+							body = {
+								code: 2,
+								message: '添加成功，但歌曲表中没此歌'
+							}
+						} else {
+							body = {
+								code: 0,
+								message: '添加成功，歌曲表中有此歌'
+							}
+						}
+						res.write(JSON.stringify(body))
+						res.end()
+					})
+				} else {
+					body = {
+						code: 0,
+						message: '删除成功'
+					}
+					res.write(JSON.stringify(body))
+					res.end()
+				}
+			} else {
+				body = {
+					code: 1,
+					message: '添加或删除失败'
+				}
+				res.write(JSON.stringify(body))
+				res.end()
+			}
+		})
+	} else if (getPathName(req.url) === '/addSong') {
+		console.log('进入addSong')
+		res.writeHead(200, {
+					'Content-Type': 'text/plain;charset=utf8',
+					'Access-Control-Allow-Origin': '*',
+					'Access-Control-Allow-Headers': 'Content-Type, Content-Length, Authorization, Accept',
+					'Access-Control-Allow-Methods': 'POST'
+		});
+
+		var data = ''
+		req.on('data', function(chunk) {
+			data += chunk
+		})
+		req.on('end', function(){
+			if (data) {
+				console.log('获取的data为：'+data)
+				data = JSON.parse(data)
+				insertSongInfo(data.songid, data.songmid, data.img, data.name, data.singer).then(obj => {
+					console.log('得到的结果：')
+					console.log(obj)
+					if (obj.status === 200) {
+						var body = {
+							code: 0,
+							message: '歌曲添加成功'
+						}
+					} else {
+						var body ={
+							code: 1,
+							message: '歌曲添加失败'
+						}
+					}
+					res.write(JSON.stringify(body))
+					res.end()
+				})
+			} else {
+				res.end('addSong')
+			}
+		})
+	}else {
 		res.end('hello')
 	}
 }).listen(8090);
