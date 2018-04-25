@@ -113,6 +113,7 @@ function haveLike (user_tel, song_id) {
 	})
 }
 
+/*插入或者删除喜欢*/
 function insertLike (user_tel, song_id, flag) {
 	return new Promise(function(resolve, reject){
 		var sql = ''
@@ -142,9 +143,7 @@ function insertLike (user_tel, song_id, flag) {
 
 function insertSongInfo (song_id, song_mid, song_img, song_name, singer) {
 	return new Promise(function(resolve, reject){
-		var sql = 'insert into songInfo (song_id, song_mid, song_img, song_name, singer) values ("'+ song_id + '","' + song_mid+ '","' + song_img+ '","' + song_name+ '","' + singer+ '");'
-		console.log('sql语句为：')
-		console.log(sql)
+		var sql = 'insert into songInfo (song_id, song_mid, song_img, song_name, singer) values ("'+ song_id + '","' + song_mid+ '","' + song_img+ '","' + song_name+ '","' + singer+ '");';
 		connection.query(sql, function(err, results, fields){
 			if (err) throw err;
 			if (results) {
@@ -154,4 +153,53 @@ function insertSongInfo (song_id, song_mid, song_img, song_name, singer) {
 	})
 }
 
-module.exports = {login, regist, insertUser, selectUser, insertLike, selectSongInfo, insertSongInfo, haveLike}
+/*查看此用户是否收藏了此歌(先放弃)*/
+function isLike (user_tel, song_id) {
+	return new Promise(function(resolve, reject){
+		var sql = `select * from likeSongs where user_tel=${user_tel} and song_id=${song_id};`
+		connection.query(sql, function(err, results, fields){
+			if (err) throw err;
+			if (results && results.length > 0) {
+				resolve({status: 1})
+			} else {
+				resolve({status: 0})
+			}
+		})
+	})
+}
+
+/* 查找到该用户收藏的歌曲id */
+function selectLike (user_tel) {
+	return new Promise(function(resolve, reject){
+		var sql = `select song_id from likeSongs where user_tel=${user_tel};`
+		connection.query(sql, function(err, results, fields){
+			if (err) throw err;
+			if (results && results.length > 0) {
+				var data = []
+				results.forEach(function(v, i){
+					data.push(v.song_id)
+				})
+				resolve({data: data})
+			} else {
+				resolve({data: []})
+			}
+		})
+	})
+}
+
+function selectSongs (user_tel) {
+	return new Promise(function(resolve, reject){
+		var sql = `select * from songInfo where song_id in(select song_id from likeSongs where user_tel=${user_tel});`
+		connection.query(sql, function(err, results, fields){
+			if (err) throw err;
+			if (results && results.length > 0) {
+				resolve({data: results})
+			} else {
+				resolve({data: []})
+			}
+		})
+	})
+}
+
+module.exports = {login, regist, insertUser, selectUser, insertLike, 
+	selectSongInfo, insertSongInfo, haveLike, selectLike, selectSongs}

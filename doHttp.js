@@ -2,7 +2,8 @@ const http = require("http");
 const url = require("url");
 // const querystring = require("querystring");
 const step = require("step");
-const {login, regist, insertUser, selectUser, insertLike, selectSongInfo, insertSongInfo} = require('./conMySQL');
+const {login, regist, insertUser, selectUser, insertLike, selectSongInfo,
+ insertSongInfo, selectLike, selectSongs} = require('./conMySQL');
 
 function getPathName (u) {
 	return url.parse(u).pathname
@@ -196,7 +197,59 @@ http.createServer(function (req, res) {
 				res.end('addSong')
 			}
 		})
-	}else {
+	} else if (getPathName(req.url) === '/likeSongs') {
+		console.log('进入likeSongs')
+		res.writeHead(200, {
+			'Content-Type': 'text/plain;charset=utf8',
+			'Access-Control-Allow-Origin': '*',
+			'Access-Control-Allow-Headers': 'Content-Type, Content-Length, Authorization, Accept',
+			'Access-Control-Allow-Methods': 'GET'
+		});
+		var data = getQuery(req.url)
+		selectLike(data.tel).then(function(obj){
+			if (obj.data) {
+				var body = {
+					code: 0,
+					message: 'select成功',
+					data: obj.data
+				}
+			} else {
+				var body = {
+					code: 1,
+					message: 'select失败'
+				}
+			}
+			res.write(JSON.stringify(body))
+			res.end()
+		})
+	} else if (getPathName(req.url) === '/songs') {
+		console.log('进入Songs')
+		res.writeHead(200, {
+			'Content-Type': 'text/plain;charset=utf8',
+			'Access-Control-Allow-Origin': '*',
+			'Access-Control-Allow-Headers': 'Content-Type, Content-Length, Authorization, Accept',
+			'Access-Control-Allow-Methods': 'GET'
+		});
+		var data = getQuery(req.url)
+		selectSongs(data.tel).then(function(obj){
+			console.log('获得的songs')
+			console.log(obj.data)
+			if (obj.data) {
+				var body = {
+					code: 0,
+					message: 'select成功',
+					data: obj.data
+				}
+			} else {
+				var body = {
+					code: 1,
+					message: 'select失败'
+				}
+			}
+			res.write(JSON.stringify(body))
+			res.end()
+		})
+	} else{
 		res.end('hello')
 	}
 }).listen(8090);
