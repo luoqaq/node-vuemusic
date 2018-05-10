@@ -3,7 +3,8 @@ const url = require("url");
 // const querystring = require("querystring");
 const step = require("step");
 const {login, regist, insertUser, selectUser, insertLike, selectSongInfo,
- insertSongInfo, selectLike, selectSongs} = require('./conMySQL');
+ insertSongInfo, selectLike, selectSongs, getUser_Music, insertFocus, getFocus} = require('./conMySQL');
+const {bySinger, byMusic, byType} = require('./recommend.js')
 
 function getPathName (u) {
 	return url.parse(u).pathname
@@ -44,7 +45,6 @@ http.createServer(function (req, res) {
 		req.on('end',function(){
 			if (data) {
 				var j = JSON.parse(data)
-				console.log('处理后的数据：' + data)
 				login(j.tel, j.pwd).then(function(obj){
 					var body = {}
 					if (obj.status === 400) {
@@ -174,11 +174,8 @@ http.createServer(function (req, res) {
 		})
 		req.on('end', function(){
 			if (data) {
-				console.log('获取的data为：'+data)
 				data = JSON.parse(data)
 				insertSongInfo(data.songid, data.songmid, data.img, data.name, data.singer).then(obj => {
-					console.log('得到的结果：')
-					console.log(obj)
 					if (obj.status === 200) {
 						var body = {
 							code: 0,
@@ -232,8 +229,6 @@ http.createServer(function (req, res) {
 		});
 		var data = getQuery(req.url)
 		selectSongs(data.tel).then(function(obj){
-			console.log('获得的songs')
-			console.log(obj.data)
 			if (obj.data) {
 				var body = {
 					code: 0,
@@ -249,8 +244,61 @@ http.createServer(function (req, res) {
 			res.write(JSON.stringify(body))
 			res.end()
 		})
-	} else{
+	} else if (getPathName(req.url) === '/bySinger') {
+		console.log('收到bySinger请求')
+		res.writeHead(200, {
+			'Content-Type': 'text/plain;charset=utf8',
+			'Access-Control-Allow-Origin': '*',
+			'Access-Control-Allow-Headers': 'Content-Type, Content-Length, Authorization, Accept',
+			'Access-Control-Allow-Methods': 'GET'
+		});
+		let data = getQuery(req.url)
+		bySinger(data.tel).then(function(data){
+			res.write(JSON.stringify(data))
+			res.end()
+		})
+	}else if (getPathName(req.url) === '/byMusic') {
+		console.log('收到byMusic请求')
+		res.writeHead(200, {
+			'Content-Type': 'text/plain;charset=utf8',
+			'Access-Control-Allow-Origin': '*',
+			'Access-Control-Allow-Headers': 'Content-Type, Content-Length, Authorization, Accept',
+			'Access-Control-Allow-Methods': 'GET'
+		});
+		let data = getQuery(req.url)
+		byMusic(data.tel).then(function(data){
+			res.write(JSON.stringify(data))
+			res.end()
+		})
+	}else if (getPathName(req.url) === '/focus') {
+		console.log('收到focus请求')
+		res.writeHead(200, {
+			'Content-Type': 'text/plain;charset=utf8',
+			'Access-Control-Allow-Origin': '*',
+			'Access-Control-Allow-Headers': 'Content-Type, Content-Length, Authorization, Accept',
+			'Access-Control-Allow-Methods': 'GET'
+		});
+		let data = getQuery(req.url)
+		insertFocus(data.tel, data.focus_user, data.flag).then(function(data){
+			res.write(JSON.stringify(data))
+			res.end()
+		})
+	}else if (getPathName(req.url) === '/getFocus') {
+		console.log('收到getFocus请求')
+		res.writeHead(200, {
+			'Content-Type': 'text/plain;charset=utf8',
+			'Access-Control-Allow-Origin': '*',
+			'Access-Control-Allow-Headers': 'Content-Type, Content-Length, Authorization, Accept',
+			'Access-Control-Allow-Methods': 'GET'
+		});
+		let data = getQuery(req.url)
+		getFocus(data.tel).then(function(data){
+			res.write(JSON.stringify(data))
+			res.end()
+		})
+	}else{
 		res.end('hello')
 	}
 }).listen(8090);
-console.log('服务开启 at http://127.0.0.1:8090')
+
+console.log('服务开启 at https://63.209.33.129:8090')

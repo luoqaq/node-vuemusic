@@ -17,7 +17,7 @@ function login (tel, pwd) {
 		connection.query(sql, function(err, results, fields) {
 			if (err) {
 				console.log('登录出错')
-				reject(err)
+				throw err;
 			}
 			if (results && results.length > 0 && results[0].user_pwd === pwd) {
 				console.log('登录成功')
@@ -78,7 +78,6 @@ function selectUser (tel) {
 		
 		connection.query(sql, function(err, results, fields){
 			if (err) throw err;
-			console.log(results)
 			resolve({data: results})
 		})
 	})
@@ -201,5 +200,143 @@ function selectSongs (user_tel) {
 	})
 }
 
+
+/* 根据用户收藏的歌曲，更新他的idol表 */
+function updateIdol (user_tel) {
+	console.log('进入updateIdol')
+	return new Promise(function(resolve, reject){
+		var sql = 'select singer,count(singer) as count from songInfo where song_id in (select song_id from likeSongs where user_tel='+ user_tel +') group by singer'
+		connection.query(sql, function(err, results, fields){
+			if (err) throw err;
+			if (results && results.length > 0) {
+				resolve({data: results})
+			} else {
+				resolve({data: []})
+			}
+		})
+	}).then(function(data){
+		data = data.data
+		if (data.length > 0) {
+			var obj = {}
+			singer = ''
+			singerCount = 2
+			data.forEach(function(v,i){
+				if (v.count > singerCount) {
+					singerCount = v.count
+					singer = v.singer
+				}
+			})
+			if (singer) {
+				console.log('插入idol')
+				return new Promise(function(resolve, reject){
+					var sql = `insert into idol (user_tel, singer, song_count) values("${user_tel}","${singer}","${singerCount}") on duplicate key update singer=values(singer),song_count=values(song_count)`
+					console.log(sql)
+					connection.query(sql, function(err, results, fields){
+					if (err) throw err;
+					var obj = {
+						code: 0,
+						message: '更新idol表成功'
+						}
+					resolve(obj)
+					})
+				})
+			} else {
+				return new Promise(function(resolve,reject) {
+					resolve({
+							code: 2,
+							message: '用户收藏不够'
+						})
+				})
+			}
+		} else {
+			return new Promise(function(resolve, reject){
+				var obj = {
+					code: 1,
+					message: '此用户没有收藏音乐'
+				}
+				resolve({result: obj})
+			})
+		}
+	})
+}
+
+/* 根据用户的最爱歌手，推荐好友 */
+function recoByIdol (user_tel) {
+	return new Promise(function(resolve, reject){
+		var sql = `select * from idol where singer = (select singer from idol where user_tel = ${user_tel}) order by song_count desc`
+		connection.query(sql, function(err, results, fields){
+			if (err) throw err;
+			if (results && results.length>1){
+				let i = 0
+				if (results[0].user_tel === user_tel){
+					i++;
+				}
+				resolve({
+					code: 0,
+					data: results[i]
+				})
+			} else if (results.length === 1){
+				resolve({
+						code: 1,
+						singer: results[0],
+						message: '未查到同歌手爱好的用户'
+					})
+			}
+		})
+	})
+}
+
+/* 获取用户-音乐的JSON对象 */
+function getUser_Music () {
+	return new Promise(function(resolve, reject){
+		var sql = 'select user_tel,song_id from likeSongs'
+		connection.query(sql, function(err, results, fields){
+			if (err) throw err;
+			if (results && results.length>0){
+				var obj = {}
+				results.forEach(function(v, i){
+					if (!obj[v.user_tel]){
+						obj[v.user_tel] = []
+						obj[v.user_tel].push(v.song_id)
+					} else {
+						obj[v.user_tel].push(v.song_id)
+					}
+				})
+				resolve(obj)
+			}
+		})
+	})
+}
+
+/* 查看用户的关注 */
+function getFocus (user_tel) {
+	return new Promise(function(resolve, reject){
+		var sql = 'select focus_user from focus where user_tel=' + user_tel
+		connection.query(sql, function(err, results, fields){
+			if (err) throw err;
+			if (results) resolve({data: results})
+		})
+	})
+}
+
+/* 改变用户的关注表，插入数据 */
+function insertFocus (user_tel, focus_user, flag) {
+	console.log('进入insertFocus操作')
+	return new Promise(function(resolve, reject){
+		if (parseInt(flag) === 1) {
+			var sql = 'insert into focus (user_tel, focus_user) values (' + user_tel +',' + focus_user+ ')';
+		} else {
+			var sql = 'delete from focus where user_tel=' + user_tel +' and focus_user=' + focus_user;
+		}
+		console.log(sql)
+		connection.query(sql, function(err, results, fields){
+			if (err) throw err;
+			console.log(results)
+			if (results) resolve({code: '0', message: '插入/删除成功'})
+		})
+	})
+}
+
 module.exports = {login, regist, insertUser, selectUser, insertLike, 
-	selectSongInfo, insertSongInfo, haveLike, selectLike, selectSongs}
+	selectSongInfo, insertSongInfo, haveLike, selectLike, selectSongs,
+    updateIdol, recoByIdol, getUser_Music, insertFocus, getFocus}
